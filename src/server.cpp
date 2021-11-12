@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include <string>
 #include <thread>
+#include <unistd.h>
 #include "nodeParallel.hpp"
 
 void printHelp(){
