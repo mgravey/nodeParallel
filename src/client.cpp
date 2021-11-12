@@ -237,17 +237,38 @@ int main(int argc, char const *argv[]) {
 	}
 	arg.erase("-sa");
 
-	std::string command;
-	if (arg.count("-cmd") ==1)
+	std::stringstream commandStream;
+	
+	bool look4leftover=false;
+	if (arg.count("-cmd") >= 1)
 	{
-		command=arg.find("-cmd")->second;
+		for (auto it=arg.equal_range("-cmd").first; it!=arg.equal_range("-cmd").second; ++it)
+		{
+			commandStream << it->second <<" ";
+		}
+		look4leftover=true;
 	}
 	arg.erase("-cmd");
 
-	if(!asWorker && command.empty())
+	if(!asWorker && commandStream.str().empty())
 	{
+		std::string command;
 		std::getline(std::cin, command);
+		commandStream<<command;
 	}
+
+	if(look4leftover){
+		for (auto it=arg.begin(); it!=arg.end(); ++it){
+			commandStream << it->first <<" ";
+			for (auto itloc=arg.equal_range(it->first).first; itloc!=arg.equal_range(it->first).second; ++itloc)
+			{
+				commandStream << itloc->second <<" ";
+			}
+		}
+	}
+
+
+	std::string command=commandStream.str();
 
 
 
@@ -331,6 +352,7 @@ int main(int argc, char const *argv[]) {
 		}
 	}
 	else{
+		std::cout << command<< std::endl;
 		ClientType clientType=CLIENT;
 		JobStatus currentStatus=PENDING;
 		
