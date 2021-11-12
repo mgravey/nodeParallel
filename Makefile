@@ -1,4 +1,3 @@
-
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Linux)
     OS =linux
@@ -13,7 +12,7 @@ export OS
 
 
 export CFLAGS=-O3 -std=c++11 -Wall -Wno-unused
-export CXXFLAGS= -DDEBUG=1
+export CXXFLAGS= #-DDEBUG=1
 export SRCS=./src
 export INC=-I./include
 export LIBINC=-I/usr/include -I/opt/local/include
@@ -41,4 +40,4 @@ np_client:client
 	cp $< $@
 
 clean:
-	rm -rf *.o $(DEFAULT_JOB)
+	rm -rf *.o server client $(DEFAULT_JOB)

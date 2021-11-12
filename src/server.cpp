@@ -57,6 +57,7 @@ zmq::message_t manageClientMessage(zmq::message_t &request, JobManadger &jobMana
 					jobManadger.job2status.erase(jobId);
 				}else{
 					jobManadger.job2status[jobId]=CANCEL;
+					fprintf(stderr, "cancel is %d\n",jobManadger.job2status[jobId] );
 				}
 				bool answer=true;
 				reply=zmq::message_t(sizeof(answer));
@@ -93,7 +94,8 @@ zmq::message_t manageWorkerMessage(zmq::message_t &request, JobManadger &jobMana
 		{
 			case NEW :
 			{
-				workerId=jobManadger.lastWorker++;
+				workerId=jobManadger.lastWorker;
+				jobManadger.lastWorker++;
 				reply=zmq::message_t(sizeof(workerId));
 				memcpy (reply.data (), &workerId, sizeof(workerId));
 				#if DEBUG
@@ -126,10 +128,10 @@ zmq::message_t manageWorkerMessage(zmq::message_t &request, JobManadger &jobMana
 	    			jobManadger.job2worker[jobId].push_back(workerId);
 					jobManadger.job2status[jobId]=SUBMITED;
 					std::string command=jobManadger.jobCommand[jobId];
-	#if DEBUG
+				#if DEBUG
 					std::cerr<< __LINE__ << std::endl;
 				#endif
-					reply=zmq::message_t(sizeof(JobID)+command.length());
+					reply=zmq::message_t(sizeof(jobId)+command.length());
 					memcpy (reply.data(), &jobId, sizeof(jobId));
 					memcpy ((char*)reply.data()+sizeof(jobId), command.c_str(), sizeof(command));
 					#if DEBUG
@@ -138,7 +140,7 @@ zmq::message_t manageWorkerMessage(zmq::message_t &request, JobManadger &jobMana
 				}else{
 					reply=zmq::message_t(0);
 					#if DEBUG
-						//std::cerr<< "worker request task but none available"<< std::endl;
+						std::cerr<< "worker request task but none available"<< std::endl;
 					#endif
 				}
 				break;
@@ -157,7 +159,7 @@ zmq::message_t manageWorkerMessage(zmq::message_t &request, JobManadger &jobMana
 				reply=zmq::message_t(sizeof(answer));
 				memcpy (reply.data (), &answer, sizeof(answer));
 				#if DEBUG
-					std::cerr<< "worker infroma about runing task"<< std::endl;
+					std::cerr<< "worker inform about runing task"<< std::endl;
 				#endif
 				break;
 			}

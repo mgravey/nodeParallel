@@ -44,7 +44,7 @@ void runWorker(WorkerID workerId, zmq::socket_t &socket){
 		std::string command;
 		if(reply.size()>=sizeof(jobId))
 		{
-			memcpy(&jobId, reply.data(),  sizeof(jobId));
+			memcpy(&jobId, reply.data(),sizeof(jobId));
 			command.resize(reply.size()-sizeof(jobId));
 			memcpy ((void*)command.data(),(char*)reply.data()+sizeof(jobId), command.length());
 		}else{ // no job available, wait and retry
@@ -54,38 +54,41 @@ void runWorker(WorkerID workerId, zmq::socket_t &socket){
 
 		if(command.empty())
 			continue;
-#if DEBUG
-				std::cerr<< __LINE__ << std::endl;
-			#endif
+
+		char bashCmd[10]="/bin/bash";
+		char comamndFlag[3]="-c";
+		char* argv[3];
+
+		argv[0]=bashCmd;
+		argv[1]=comamndFlag;
+		argv[2]=(char*)malloc(command.length()+1);
+		strcpy(argv[2],command.c_str());
+
 		pid_t pid=fork(); // fork, to be crash resistant !!
 		if (pid==0) { // child process //
-			std::string param[3]={"bash","-c",command};
-			char bashCmd[50]="/bin/sleep";
-			char comamndFlag[50]="10";
-			char* argv[2];
-			// for (int i = 0; i < 3; ++i)
-			// {
-			// 	argv[i]=(char*)param[i].c_str();
-			// 	fprintf(stderr, "%s\n",argv[i] );
-			// }
-			argv[0]=bashCmd;
-			argv[1]=comamndFlag;
+			//std::string param[3]={"/bin/bash","-c",command};
+
 			execv(argv[0], argv);
+			std::cerr<< "failed" << std::endl;
 			exit(127); // only if execv fails //
 		}
-#if DEBUG
-				std::cerr<< __LINE__ << std::endl;
-			#endif
+
 		bool manuallyInterupted = false;
 
 		requestType=RUNING_TASK;
 		int status;
-		usleep(300);
-		while(waitpid(pid, &status, WNOHANG) != pid) {
-		    zmq::message_t request (sizeof(clientType)+sizeof(requestType)+sizeof(workerId));
+		unsigned char updateStatus=0;
+		while((waitpid(pid, &status, WNOHANG) != pid) && !manuallyInterupted) {
+		   if((updateStatus++%100)==0){
+		   	usleep(300);
+		   	continue;
+		   }
+
+		   zmq::message_t request (sizeof(clientType)+sizeof(requestType)+sizeof(workerId)+sizeof(jobId));
 			memcpy((char*)request.data (), &clientType, sizeof(clientType));
 			memcpy((char*)request.data ()+sizeof(clientType), &requestType, sizeof(requestType));
 			memcpy((char*)request.data ()+sizeof(clientType)+sizeof(requestType), &workerId, sizeof(workerId));
+			memcpy((char*)request.data()+sizeof(ClientType)+sizeof(WorkerRequestType)+sizeof(workerId),&jobId,sizeof(jobId));
 			if(!socket.send (request,zmq::send_flags::none) ){
 				//issue in sending
 			}
@@ -96,10 +99,12 @@ void runWorker(WorkerID workerId, zmq::socket_t &socket){
 			bool answer;
 			if(reply.size()>=sizeof(answer))
 			{
-				
 				memcpy ( &answer,reply.data (), sizeof(answer));
 				if(!answer || needToCancel)
 				{
+					#if DEBUG
+						std::cerr<< "Cancelation requested" << std::endl;
+					#endif
 					kill(pid, SIGTERM);
 
 					for (int loop=0; !manuallyInterupted && loop < 6 ; ++loop)
@@ -120,20 +125,23 @@ void runWorker(WorkerID workerId, zmq::socket_t &socket){
 						if (waitpid(pid, &status, WNOHANG) == pid) manuallyInterupted = true;
 					};
 
-					if (!manuallyInterupted) kill(pid, SIGKILL);
+					if (!manuallyInterupted)
+						{
+							kill(pid, SIGKILL);
+							waitpid(pid, &status, 0);
+							manuallyInterupted = true;
+						}
 				}
 			}
-			usleep(300);
+			
 			
 		}
-#if DEBUG
-				std::cerr<< __LINE__ << std::endl;
-			#endif
+
 		{
 			requestType=TASK_FINISH;
 			int jobReturnCode=0;
 			if(WIFEXITED(status) || (manuallyInterupted && !needToCancel )){
-				//nothing particular 
+				jobReturnCode=WEXITSTATUS(status);
 		    }else{
 			    if(WIFSIGNALED(status)){
 			    	jobReturnCode=WTERMSIG(status);
@@ -167,9 +175,7 @@ void runWorker(WorkerID workerId, zmq::socket_t &socket){
 				}
 			}
 		}
-#if DEBUG
-				std::cerr<< __LINE__ << std::endl;
-			#endif
+
 
 
 	}
@@ -177,6 +183,8 @@ void runWorker(WorkerID workerId, zmq::socket_t &socket){
 
 int main(int argc, char const *argv[]) {
 	needToCancel=false;
+	signal(SIGINT, signalHandler);
+	signal(SIGTERM, signalHandler);
 	std::multimap<std::string, std::string> arg=argumentReader(argc,argv);
 
 	if ((arg.count("-h") == 1)|| (arg.count("--help") == 1))
@@ -246,7 +254,7 @@ int main(int argc, char const *argv[]) {
 	std::transform(serverAddress.begin(), serverAddress.end(), serverAddress.begin(),::tolower);
 
 	//run daemon
-	if(asWorker && runAsDaemon ){
+	if(asWorker && runAsDaemon  && !needToCancel){
 		fprintf(stderr, "start daemon\n" );
 		bool stayInCurrentDirectory=true;
 		bool dontRedirectStdIO=false;
@@ -255,17 +263,16 @@ int main(int argc, char const *argv[]) {
 		else fprintf(stderr, "Daemon started\n" );
 	}
 
-
+	if(needToCancel) return 0;
 	zmq::context_t context (1);
 	zmq::socket_t socket (context, ZMQ_REQ);
-
+	if(needToCancel) return 0;
 	char address[4096];
 	sprintf(address,"tcp://%s:%d",serverAddress.c_str(),port);
 	socket.connect (address);
+	if(needToCancel) return 0;
+	
 
-	signal(SIGINT, signalHandler);
-	signal(SIGTERM, signalHandler);
-	std::cerr<< __LINE__ << std::endl;
 	if(asWorker){
 		ClientType clientType=WORKER;
 		WorkerRequestType requestType;
@@ -291,16 +298,11 @@ int main(int argc, char const *argv[]) {
 			#if DEBUG
 				std::cerr<< "worker register as:"<< workerId << std::endl;
 			#endif
+			std::cerr << std::flush; // without it crash ??? what the hell
 		}
 
-#if DEBUG
-				std::cerr<< __LINE__ << std::endl;
-			#endif
 		runWorker(workerId,socket);
 
-		#if DEBUG
-				std::cerr<< __LINE__ << std::endl;
-			#endif
 
 		requestType=DELETE;
 		{
@@ -332,7 +334,7 @@ int main(int argc, char const *argv[]) {
 		ClientType clientType=CLIENT;
 		JobStatus currentStatus=PENDING;
 		
-		JobID jobId;
+		JobID jobId=0;
 		// sumbit command	
 		{
 			ClientRequestType requestType=NEW_TASK;
@@ -354,7 +356,7 @@ int main(int argc, char const *argv[]) {
 			}
 		}	
 
-		// wiat for ouput 
+		// wait for ouput 
 		while (blocking) {
 			ClientRequestType requestType;
 			if(needToCancel){
