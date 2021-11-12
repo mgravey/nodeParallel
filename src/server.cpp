@@ -134,7 +134,7 @@ zmq::message_t manageWorkerMessage(zmq::message_t &request, JobManadger &jobMana
 				#endif
 					reply=zmq::message_t(sizeof(jobId)+command.length());
 					memcpy (reply.data(), &jobId, sizeof(jobId));
-					memcpy ((char*)reply.data()+sizeof(jobId), command.c_str(), sizeof(command));
+					memcpy ((char*)reply.data()+sizeof(jobId), command.c_str(), command.length());
 					#if DEBUG
 						std::cerr<< "worker request task and get one"<< std::endl;
 					#endif
