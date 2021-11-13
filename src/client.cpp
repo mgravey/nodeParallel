@@ -353,7 +353,7 @@ int main(int argc, char const *argv[]) {
 		}
 	}
 	else{
-		std::cout << command<< std::endl;
+		//std::cout << command<< std::endl;
 		ClientType clientType=CLIENT;
 		JobStatus currentStatus=PENDING;
 		
