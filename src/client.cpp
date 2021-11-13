@@ -57,12 +57,13 @@ void runWorker(WorkerID workerId, zmq::socket_t &socket){
 
 		char bashCmd[10]="/bin/bash";
 		char comamndFlag[3]="-c";
-		char* argv[3];
+		char* argv[4];
 
 		argv[0]=bashCmd;
 		argv[1]=comamndFlag;
 		argv[2]=(char*)malloc(command.length()+1);
 		strcpy(argv[2],command.c_str());
+		argv[3]=nullptr;
 
 		pid_t pid=fork(); // fork, to be crash resistant !!
 		if (pid==0) { // child process //
@@ -319,7 +320,7 @@ int main(int argc, char const *argv[]) {
 			#if DEBUG
 				std::cerr<< "worker register as:"<< workerId << std::endl;
 			#endif
-			std::cerr << std::flush; // without it crash ??? what the hell
+			
 		}
 
 		runWorker(workerId,socket);

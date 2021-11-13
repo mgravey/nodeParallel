@@ -35,9 +35,9 @@ default: $(DEFAULT_JOB)
 	$(CXX) -o $@ $< $(LIB_PATH) $(LDFLAGS)
 
 np_server:server
-	cp $< $@
+	mv $< $@
 np_client:client
-	cp $< $@
+	mv $< $@
 
 clean:
 	rm -rf *.o server client $(DEFAULT_JOB)
