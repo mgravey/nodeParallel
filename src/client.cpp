@@ -23,6 +23,7 @@ void printHelp(){
 void runWorker(WorkerID workerId, zmq::socket_t &socket, bool stopAfterComputation=false){
 	bool needToStop=false;
 	ClientType clientType=WORKER;
+	int noJob=0;
 	while(!needToStop && !needToCancel) {
 		//look for a job
 		WorkerRequestType requestType=REQUEST_TASK;
@@ -48,12 +49,12 @@ void runWorker(WorkerID workerId, zmq::socket_t &socket, bool stopAfterComputati
 			command.resize(reply.size()-sizeof(jobId));
 			memcpy ((void*)command.data(),(char*)reply.data()+sizeof(jobId), command.length());
 		}else{ // no job available, wait and retry
-			if(stopAfterComputation){
+			if(stopAfterComputation && (noJob++>50)){
 				return;
-			}else{
-				std::this_thread::sleep_for(std::chrono::milliseconds(100));
-				continue;
 			}
+			std::this_thread::sleep_for(std::chrono::milliseconds(100));
+			continue;
+			
 		}
 
 		if(command.empty())
