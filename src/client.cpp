@@ -20,7 +20,7 @@ void printHelp(){
 	printf ("The help should definitely be written! :)\n");
 }
 
-void runWorker(WorkerID workerId, zmq::socket_t &socket){
+void runWorker(WorkerID workerId, zmq::socket_t &socket, bool stopAfterComputation=false){
 	bool needToStop=false;
 	ClientType clientType=WORKER;
 	while(!needToStop && !needToCancel) {
@@ -48,8 +48,12 @@ void runWorker(WorkerID workerId, zmq::socket_t &socket){
 			command.resize(reply.size()-sizeof(jobId));
 			memcpy ((void*)command.data(),(char*)reply.data()+sizeof(jobId), command.length());
 		}else{ // no job available, wait and retry
-			std::this_thread::sleep_for(std::chrono::milliseconds(100));
-			continue;
+			if(stopAfterComputation){
+				return;
+			}else{
+				std::this_thread::sleep_for(std::chrono::milliseconds(100));
+				continue;
+			}
 		}
 
 		if(command.empty())
@@ -231,6 +235,13 @@ int main(int argc, char const *argv[]) {
 	}
 	arg.erase("-b");
 
+	bool stopAfterComputation=false;
+	if (arg.count("-sac") ==1)
+	{
+		stopAfterComputation=true;
+	}
+	arg.erase("-sac");
+
 	std::string serverAddress="localhost";
 	if (arg.count("-sa") ==1)
 	{
@@ -323,7 +334,7 @@ int main(int argc, char const *argv[]) {
 			
 		}
 
-		runWorker(workerId,socket);
+		runWorker(workerId,socket,stopAfterComputation);
 
 
 		requestType=DELETE;
