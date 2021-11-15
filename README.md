@@ -23,13 +23,13 @@ Then add the folder to the PATH!
 | `-b`			| Run in blocking mode (wait that the command finish remotely <br>before returning, crtl+c is forwarded too)	|Sub	|
 
 ## How to use ?
-To use nodeParallel, you need first to run the server `np_server`.
+To use nodeParallel, you need first to run the server `np_server`.<br>
 Then either
-1.	Run some(1+) workers using on a single/multiple nodes. Example `np_client -sa serverAddress -w`, or multiple worker `parallel --lb -j4 "np_client -sa serverAddress -w" ::: {0..3}`
-2.	Then simply run a command like `np_client -b -cmd sleep 2`, `np_client -b <<< sleep 2`or multiple such as `parallel -j4 -k "np_client -b -cmd echo " ::: {1..50}`
+1.	Run some(1+) workers on a single/multiple nodes. Using command such as `np_client -sa serverAddress -w` for a single worker, or multiple worker using for example `parallel --lb -j4 "np_client -sa serverAddress -w" ::: {0..3}`
+2.	Then simply run a command you want to be computed remotely like `np_client -b -cmd sleep 2`, `np_client -b <<< sleep 2`or multiple commands such as `parallel -j4 -k "np_client -b -cmd echo " ::: {1..50}`
 
 Either
-1.	Run tasks such as `np_client -cmd sleep 2`, `np_client <<< sleep 2`or multiple such as `parallel -j4 -k "np_client -cmd echo " ::: {1..50}`
-2.	The run some(1+) workers using on a single/multiple nodes. Example `np_client -sa serverAddress -sac -w`, or multiple worker `parallel --lb -j4 "np_client -sa serverAddress -sac -w" ::: {0..3}`
+1.	Run a task such as `np_client -cmd sleep 2`, `np_client <<< sleep 2`or multiple tasks such as `parallel -j4 -k "np_client -cmd echo " ::: {1..50}`
+2.	Then run some(1+) workers on a single/multiple nodes, with `np_client -sa serverAddress -sac -w`, or multiple worker with `parallel --lb -j4 "np_client -sa serverAddress -sac -w" ::: {0..3}`
 
 
